@@ -1,156 +1,625 @@
 import tkinter as tk
 from tkinter import ttk
-import random # Usado para gerar dados de exemplo
+from tkinter import messagebox
+import sqlite3
 
-class TelaConsultaChamada(ttk.Frame):
-    """
-    Tela para consultar a lista de presença de uma turma específica.
-    Organiza os widgets de seleção e a tabela de exibição dos dados.
-    """
-    def __init__(self, container):
-        super().__init__(container)
-        self.container = container
+class TelaCadastroAluno:
+    def __init__(self, root):
+        self.root = root
 
-        # --- Configuração da Janela Principal ---
-        self.container.title("Consulta de Chamada por Turma")
-        self.container.geometry("900x600")
-        self.container.minsize(700, 500)
+        self._criar_entradas()
 
-        # --- Configuração de Estilos ---
-        self.style = ttk.Style(self.container)
-        self.style.theme_use("clam")
+    def _criar_entradas(self):
+        # Frames
+        self.up_frame = tk.Frame(self.root, bg="#002CA7", height=150)
+        self.up_frame.pack(fill="x")
 
-        # Define cores e fontes para os elementos
-        BG_COLOR = "#f0f8ff" # AliceBlue - um azul bem claro
-        self.style.configure("TFrame", background=BG_COLOR)
-        self.style.configure("TLabel", background=BG_COLOR, font=("Arial", 12))
-        self.style.configure("Title.TLabel", font=("Arial", 18, "bold"))
-        self.style.configure("TButton", font=("Arial", 12, "bold"), padding=10)
-        self.style.configure("Treeview.Heading", font=("Arial", 12, "bold"))
-        self.style.configure("Treeview", font=("Arial", 11), rowheight=25) # Aumenta a altura da linha
+        self.principal_frame = tk.Frame(self.root, bg="#f3f3f3")
+        self.principal_frame.pack(fill="both", expand=True, padx=20, pady=10, anchor="center")
+        
+        self.sub1principal_frame = tk.Frame(self.principal_frame, bg="#f3f3f3")
+        self.sub1principal_frame.pack(fill="both", expand=True, padx=20, pady=2, anchor="center")
+        
+        self.sub2principal_frame = tk.Frame(self.principal_frame, bg="#f3f3f3")
+        self.sub2principal_frame.pack(fill="both", expand=True, padx=20, pady=2, anchor="center")
 
-        # --- Layout Responsivo ---
-        # Configura o grid da janela para que nosso frame principal se expanda
-        self.container.grid_rowconfigure(0, weight=1)
-        self.container.grid_columnconfigure(0, weight=1)
+        self.footer_frame = tk.Frame(self.root, bg="#002CA7", height=50)
+        self.footer_frame.pack(fill="x")
 
-        # Coloca este frame (self) na janela principal (container)
-        self.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
-        self.configure(style="TFrame")
+        self.principal_frame.grid_columnconfigure(0, weight=1)  
+        self.principal_frame.grid_columnconfigure(1, weight=1) 
 
-        # Chama o método que cria e posiciona todos os widgets
-        self._criar_widgets()
-        # Carrega dados iniciais (opcional)
-        self._carregar_dados_iniciais()
+        titulo = tk.Label(self.up_frame, text="🖍️CADASTRAR CURSOS", bg="#002CA7", fg="white",
+                          font=("Arial", 28, "bold"))
+        titulo.grid(row=0, column=0, pady=10)
 
-    def _criar_widgets(self):
-        """
-        Cria e organiza todos os widgets na tela usando o sistema de grid.
-        """
-        # --- Configuração do Grid Interno ---
-        # A coluna 0 terá todo o peso, fazendo com que a tabela se expanda.
-        self.grid_columnconfigure(0, weight=1)
-        # A linha 3 terá peso para empurrar a mensagem de status para baixo.
-        self.grid_rowconfigure(3, weight=1)
 
-        # --- Frame para os Controles (Seleção de Turma) ---
-        # Agrupar os controles em um frame próprio ajuda na organização.
-        frame_controles = ttk.Frame(self, style="TFrame")
-        frame_controles.grid(row=1, column=0, pady=(0, 20), sticky="ew")
-        frame_controles.grid_columnconfigure(1, weight=1) # Faz o combobox se esticar
+            #=========botões==========
+        self.btn_cadastrar = tk.Button(self.sub1principal_frame, text="Cadastre", font=("Arial", 12, "bold"),
+                                       bg="#002CA7", fg="white", command=self.cadastrar_alunos)
+        self.btn_cadastrar.grid(row=0, column=0, columnspan=2, pady=10, sticky="nsew")
 
-        # --- Título ---
-        label_titulo = ttk.Label(self, text="Consulta de Chamada", style="Title.TLabel")
-        label_titulo.grid(row=0, column=0, pady=(10, 20))
+        self.btn_consultar = tk.Button(self.sub1principal_frame, text="Consultar registros", font=("Arial", 12, "bold"),
+                                       bg="#0055FF", fg="white", command=self.consultar_dados_curso)
+        self.btn_consultar.grid(row=0, column=3, columnspan=2, pady=10, sticky="nsew")
 
-        # --- Controles de Seleção ---
-        label_turma = ttk.Label(frame_controles, text="Selecione a Turma:")
-        label_turma.grid(row=0, column=0, padx=(0, 10))
+            #=========footer==========
+        tk.Label(self.footer_frame, text=" Aluv  System - ₢ Todos direitos reservados - (38) 9 9871-8375",
+                 bg="#002CA7", fg="white", font=("Arial", 10)).pack(pady=10)
 
-        self.combo_turmas = ttk.Combobox(frame_controles, state="readonly")
-        self.combo_turmas.grid(row=0, column=1, sticky="ew")
 
-        btn_buscar = ttk.Button(frame_controles, text="Buscar", command=self.buscar_chamada)
-        btn_buscar.grid(row=0, column=2, padx=(10, 0))
 
-        # --- Tabela (Treeview) para exibir os dados ---
-        self.tree = ttk.Treeview(self, columns=("matricula", "nome", "presenca"), show="headings")
-        self.tree.heading("matricula", text="Matrícula")
-        self.tree.heading("nome", text="Nome do Aluno")
-        self.tree.heading("presenca", text="Presença")
+    def cadastrar_alunos(self):
+        self.limpar_center()
+        self.sub3principal_frame = tk.Frame(self.sub2principal_frame, bg="#f3f3f3")
+        self.sub3principal_frame.pack(fill="both", expand=True, padx=20, pady=10)
 
-        # Define a largura das colunas
-        self.tree.column("matricula", width=150, anchor="center")
-        self.tree.column("nome", width=400)
-        self.tree.column("presenca", width=100, anchor="center")
+        # Configurar grid para centralizar
+        self.sub3principal_frame.grid_columnconfigure(0, weight=1)  # coluna dos labels
+        self.sub3principal_frame.grid_columnconfigure(1, weight=2)  # coluna dos entry
+        self.sub3principal_frame.grid_columnconfigure(2, weight=1)  # espaço extra
 
-        self.tree.grid(row=2, column=0, sticky="nsew") # Estica a tabela em todas as direções
+        # Labels e Entradas
+        tk.Label(self.sub3principal_frame, text="Nome", bg="#f3f3f3", font=("Arial", 12, "bold"))\
+            .grid(row=0, column=0, sticky="e", pady=5)
+        self.entry_nome = tk.Entry(self.sub3principal_frame, font=("Arial", 12), justify="center")
+        self.entry_nome.grid(row=0, column=1, pady=5, sticky="ew")
 
-        # Adiciona uma barra de rolagem à tabela
-        scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.tree.yview)
-        self.tree.configure(yscrollcommand=scrollbar.set)
-        scrollbar.grid(row=2, column=1, sticky="ns")
+        tk.Label(self.sub3principal_frame, text="Matrícula", bg="#f3f3f3", font=("Arial", 12, "bold"))\
+            .grid(row=1, column=0, sticky="e", pady=5)
+        self.entry_matricula = tk.Entry(self.sub3principal_frame, font=("Arial", 12), justify="center")
+        self.entry_matricula.grid(row=1, column=1, pady=5, sticky="ew")
 
-        # --- Mensagem de Status ---
-        self.label_mensagem = ttk.Label(self, text="Selecione uma turma e clique em 'Buscar'.", anchor="center")
-        self.label_mensagem.grid(row=4, column=0, columnspan=2, pady=(10, 0), sticky="ew")
+        tk.Label(self.sub3principal_frame, text="CPF", bg="#f3f3f3", font=("Arial", 12, "bold"))\
+            .grid(row=2, column=0, sticky="e", pady=5)
+        self.entry_cpf= tk.Entry(self.sub3principal_frame, font=("Arial", 12), justify="center")
+        self.entry_cpf(row=2, column=1, pady=5, sticky="ew")
 
-    def _carregar_dados_iniciais(self):
-        """
-        Carrega dados iniciais no combobox de turmas.
-        No mundo real, isso viria de um banco de dados.
-        """
-        # Dados de exemplo
-        turmas = ["Técnico em Informática - 2024", "Logística - 2023", "Administração - 2024"]
-        self.combo_turmas['values'] = turmas
-        if turmas:
-            self.combo_turmas.current(0) # Seleciona o primeiro item por padrão
+        tk.Label(self.sub3principal_frame, text="Email", bg="#f3f3f3", font=("Arial", 12, "bold"))\
+            .grid(row=3, column=0, sticky="e", pady=5)
+        self.entry_email = tk.Entry(self.sub3principal_frame, font=("Arial", 12), justify="center")
+        self.entry_email.grid(row=3, column=1, pady=5, sticky="ew")
 
-    def buscar_chamada(self):
-        """
-        Função chamada pelo botão 'Buscar'.
-        Limpa a tabela e carrega os dados da turma selecionada.
-        """
-        # Limpa a tabela antes de inserir novos dados
-        for item in self.tree.get_children():
-            self.tree.delete(item)
+        self.btn_cadastrar = tk.Button(self.sub3principal_frame, text="Cadastrar", font=("Arial", 12, "bold"),
+                                    bg="#002CA7", fg="white", command=self.salvar_cursos)
+        self.btn_cadastrar.grid(row=4, column=1, pady=10, sticky="nsew")
 
-        turma_selecionada = self.combo_turmas.get()
-        if not turma_selecionada:
-            self.label_mensagem.config(text="Erro: Nenhuma turma selecionada.", foreground="red")
+    #===============================================================================
+
+    # import tkinter as tk
+# from tkinter import ttk
+# from tkinter import messagebox
+# import sqlite3
+
+
+# class TelaCadastroCurso(ttk.Frame):
+#     def __init__(self, container):
+#         super().__init__(container)
+#         self.container = container
+
+#         # --- Configuração da Janela Principal ---
+#         # self.container.title("Cadastrar curso")
+#         # self.container.geometry("1080x720")
+#         # self.container.minsize(700, 600)# Tamanho mínimo para a janela
+
+#         # --- Configuração de Estilos ---
+#         self.style = ttk.Style(self.container)
+#         self.style.theme_use("clam")
+#         BG_COLOR = "#e0e8f0"
+#         self.style.configure("TFrame", background=BG_COLOR)
+#         self.style.configure("TLabel", background=BG_COLOR, font=("Arial", 12))
+#         self.style.configure("Title.TLabel", font=("Arial", 12, "bold"))
+#         self.style.configure("TButton", font=("Arial", 12, "bold"), padding=10)
+#         self.style.configure("TEntry", font=("Arial", 12), padding=5)
+
+#         # --- Layout Responsivo ---
+#         self.container.grid_rowconfigure(0, weight=1)
+#         self.container.grid_columnconfigure(0, weight=1)
+
+#         self.grid(row=0, column=0, sticky="nsew")
+#         self.configure(style="TFrame")
+
+
+
+#         # Criação dos widgets
+#         self._criar_entradas()
+
+
+#     def _criar_entradas(self):
+#     # frames
+#         self.up_frame = ttk.Frame(self.container, bg="#002CA7", height=150)
+#         self.up_frame.pack(fill="x")
+        
+#         self.principal_frame = ttk.Frame(self.container, bg="#f3f3f3")
+#         self.principal_frame.pack(fill="both", expand=True)
+
+#         self.footer_frame = ttk.Frame(self.container, bg="#002CA7", height=50)
+#         self.footer_frame.pack(fill="x")
+        
+        
+        
+#     #Cria e organiza todas as informações a serem preenchidas na tela
+#         self.grid_columnconfigure(0, weight=1)
+#         self.grid_columnconfigure(1, weight=0)
+#         self.grid_columnconfigure(2, weight=1)
+#         self.grid_columnconfigure(3, weight=1)
+
+#         titulo = ttk.Label(self.up_frame, text="CADASTRAR CURSOS", style="Title.TLabel")
+#         titulo.grid(row=0, column=1, columnspan=2, pady=(20, 30))
+
+#         label_curso=ttk.Label(self.principal_frame, text="Curso", style='TLabel')
+#         label_curso.grid(row=1, column=1,sticky='w' )
+#         self.entry_curso=ttk.Entry(self.principal_frame, width= 100, style='TEntry')
+#         self.entry_curso.grid(row=1, column=2, sticky='w')
+
+#         label_codigot=ttk.Label(self.principal_frame, text="Código da Turma", style='TLabel')
+#         label_codigot.grid(row=2, column=1,sticky='w' )
+#         self.entry_codigot=ttk.Entry(self.principal_frame, width= 100, style='TEntry')
+#         self.entry_codigot.grid(row=2, column=2, sticky='w')
+
+#         label_turno = ttk.Label(self.principal_frame, text="Turno", style='TLabel')
+#         label_turno.grid(row=3, column=1, sticky='w')
+#         self.combo_turno = ttk.Combobox(self.principal_frame, values=['Manhã', 'Tarde', 'Noite'], font=('Arial', 10))
+#         self.combo_turno.grid(row=3, column=2, sticky='w')
+
+#         label_unidade = ttk.Label(self.principal_frame, text="Unidade", style='TLabel')
+#         label_unidade.grid(row=4, column=1, sticky='w')
+#         self.entry_unidade = ttk.Entry(self.principal_frame, width=100, style='TEntry')
+#         self.entry_unidade.grid(row=4, column=2, sticky='w')
+           
+#         # --- Botões ---
+    
+#         botao_cadastrar = ttk.Button(self.principal_frame, text="Cadastrar", command=self.cadastrar_cursos)
+#         botao_cadastrar.grid(row=6, column=1, columnspan=2, pady=(30, 10), sticky="ew")
+
+#         botao_consultar = ttk.Button(self.principal_frame, text="Consultar registros", command=self.consultar_dados_curso)
+#         botao_consultar.grid(row=7, column=1, columnspan=2, pady=(10, 20), sticky="ew")
+        
+#         # --- FOOTER ---
+#         tk.Label(self.footer_frame, text=" Hexa - Soluções Empresariais - ₢ Todos direitos reservados - (38) 9 9917-8063", bg="#002CA7", fg="white", font=("Arial", 10)).pack(pady=10)
+
+
+#     def cadastrar_cursos(self):
+#         try:
+#             con = sqlite3.connect("instituicao.db")
+#             cur = con.cursor()
+#             cur.execute("""
+#                 INSERT INTO curso
+#                 (Curso, Codigo_da_turma, Turno, Unidade)
+#                 VALUES (?, ?, ?, ?)
+#             """, (
+#                 self.entry_curso.get(),
+#                 self.entry_codigot.get(),
+#                 self.combo_turno.get(),
+#                 self.entry_unidade.get()
+                
+#             ))
+#             con.commit()
+#             con.close()
+
+#             messagebox.showinfo("Sucesso", "Dados cadastrado com sucesso!")
+#             self._limpar_campos()
+
+#         except Exception as e:
+#             messagebox.showerror("Erro", f"Falha ao salvar os dados:\n{e}")
+
+#     def consultar_dados_curso(self):
+#         consulta_win = tk.Toplevel(self.container)
+#         consulta_win.title("Dados do Curso")
+#         consulta_win.geometry("900x400")
+
+#         colunas = ("ID", "Curso", "Codigo da turma", "Turno", "Unidade")
+#         tree = ttk.Treeview(consulta_win, columns=colunas, show="headings")
+
+#         for col in colunas:
+#             tree.heading(col, text=col.capitalize())
+#             tree.column(col, width=100)
+
+#         tree.pack(expand=True, fill="both")
+
+#         con = sqlite3.connect("instituicao.db")
+#         cursor = con.cursor()
+#         cursor.execute("SELECT * FROM curso")
+#         for row in cursor.fetchall():
+#             tree.insert("", "end", values=row)
+#         con.close()
+
+#         #=====Botão de deletar=======
+#         def deletar_selecionado():
+#             item = tree.selection()
+#             if not item:
+#                 messagebox.showerror("Erro", "Selecione a opção que você deseja deletar!")
+#                 return
+
+#             curso_id = tree.item(item)["values"][0]
+
+#             con = sqlite3.connect("instituicao.db")
+#             cursor = con.cursor()
+#             cursor.execute("DELETE FROM curso WHERE id=?", (curso_id,))
+#             con.commit()
+#             con.close()
+
+#             tree.delete(item)
+#             messagebox.showinfo("Sucesso", "Professor deletado com sucesso!")
+
+#         botao_deletar = ttk.Button(consulta_win, text="Deletar Selecionado", command=deletar_selecionado)
+#         botao_deletar.pack(pady=10)
+
+#     def _limpar_campos(self): #apos salvar os dados limpar os campos
+#         self.entry_curso.delete(0, tk.END)
+#         self.entry_codigot.delete(0, tk.END)
+#         self.combo_turno.set(" ")
+#         self.entry_unidade.delete(0, tk.END)
+        
+
+
+
+# if __name__ == "__main__":
+#     root = tk.Tk()
+#     app = TelaCadastroCurso(root)
+#     root.mainloop()
+
+
+#=============================
+import tkinter as tk
+from tkinter import messagebox
+from tkinter import ttk
+import sqlite3
+
+
+class TelaCadastroCurso:
+    def __init__(self, root):
+        self.root = root
+
+        # Configuração da janela
+        # self.root.title("Cadastrar curso")
+        # self.root.geometry("1080x720")
+        # self.root.minsize(700, 600)
+        # self.root.configure(bg="#e0e8f0")
+
+        # Criação dos widgets
+        self._criar_entradas()
+
+        # Banco de dados
+        # self._criar_tabela()
+
+    # def _criar_tabela(self):
+    #     con = sqlite3.connect("instituicao.db")
+    #     cur = con.cursor()
+    #     cur.execute("""
+    #         CREATE TABLE IF NOT EXISTS curso(
+    #             ID INTEGER PRIMARY KEY AUTOINCREMENT,
+    #             Curso TEXT NOT NULL,
+    #             Codigo_da_turma TEXT NOT NULL UNIQUE,
+    #             Turno TEXT NOT NULL,
+    #             Unidade TEXT NOT NULL
+    #         )
+    #     """)
+    #     con.commit()
+    #     con.close()
+
+    def _criar_entradas(self):
+        # Frames
+        self.up_frame = tk.Frame(self.root, bg="#002CA7", height=150)
+        self.up_frame.pack(fill="x")
+
+        self.principal_frame = tk.Frame(self.root, bg="#f3f3f3")
+        self.principal_frame.pack(fill="both", expand=True, padx=20, pady=10, anchor="center")
+        
+        self.sub1principal_frame = tk.Frame(self.principal_frame, bg="#f3f3f3")
+        self.sub1principal_frame.pack(fill="both", expand=True, padx=20, pady=2, anchor="center")
+        
+        self.sub2principal_frame = tk.Frame(self.principal_frame, bg="#f3f3f3")
+        self.sub2principal_frame.pack(fill="both", expand=True, padx=20, pady=2, anchor="center")
+
+        self.footer_frame = tk.Frame(self.root, bg="#002CA7", height=50)
+        self.footer_frame.pack(fill="x")
+        
+        # Configurar o peso das colunas e linhas
+        self.principal_frame.grid_columnconfigure(0, weight=1)  # Coluna 0 se expande
+        self.principal_frame.grid_columnconfigure(1, weight=1)  # Coluna 1 se expande
+        # self.principal_frame.grid_rowconfigure(0, weight=1)     # Linha 0 se expande
+        # self.principal_frame.grid_rowconfigure(1, weight=1)     # Linha 1 se expande
+        # self.principal_frame.grid_rowconfigure(1, weight=1)     # Linha 0 se expande
+        # self.principal_frame.grid_rowconfigure(2, weight=1)     # Linha 1 se expande
+
+        # Título
+        titulo = tk.Label(self.up_frame, text="🖍️CADASTRAR CURSOS", bg="#002CA7", fg="white",
+                          font=("Arial", 28, "bold"))
+        titulo.grid(row=0, column=0, pady=10)
+
+        # # Labels e Entradas
+        # tk.Label(self.sub2principal_frame, text="Curso", bg="#f3f3f3", font=("Arial", 12, "bold")).grid(row=0, column=0, sticky="w", pady=5)
+        # self.entry_curso = tk.Entry(self.sub2principal_frame, font=("Arial", 12), width=50)
+        # self.entry_curso.grid(row=0, column=1, pady=5, sticky="nsew")
+
+        # tk.Label(self.sub2principal_frame, text="Código da Turma", bg="#f3f3f3", font=("Arial", 12, "bold")).grid(row=1, column=0, sticky="w", pady=5)
+        # self.entry_codigot = tk.Entry(self.sub2principal_frame, font=("Arial", 12), width=50)
+        # self.entry_codigot.grid(row=1, column=1, pady=5, sticky="nsew")
+
+        # tk.Label(self.sub2principal_frame, text="Turno", bg="#f3f3f3", font=("Arial", 12, "bold")).grid(row=2, column=0, sticky="w", pady=5)
+        # self.combo_turno = ttk.Combobox(self.sub2principal_frame, values=["Manhã", "Tarde", "Noite"], font=("Arial", 12), width=48)
+        # self.combo_turno.grid(row=2, column=1, pady=5, sticky="nsew")
+
+        # tk.Label(self.sub2principal_frame, text="Unidade", bg="#f3f3f3", font=("Arial", 12, "bold")).grid(row=3, column=0, sticky="w", pady=5)
+        # self.entry_unidade = tk.Entry(self.sub2principal_frame, font=("Arial", 12), width=50)
+        # self.entry_unidade.grid(row=3, column=1, pady=5, sticky="nsew")
+
+        # Botões
+        self.btn_cadastrar = tk.Button(self.sub1principal_frame, text="Cadastre", font=("Arial", 12, "bold"),
+                                       bg="#002CA7", fg="white", command=self.cadastrar_cursos)
+        self.btn_cadastrar.grid(row=0, column=0, columnspan=2, pady=10, sticky="nsew")
+        
+        # self.btn_cadastrar = tk.Button(self.sub2principal_frame, text="Cadastrar", font=("Arial", 12, "bold"),
+        #                                bg="#002CA7", fg="white", command=self.salvar_cursos)
+        # self.btn_cadastrar.grid(row=0, column=0, columnspan=2, pady=(20, 5), sticky="nsew")
+
+        self.btn_consultar = tk.Button(self.sub1principal_frame, text="Consultar registros", font=("Arial", 12, "bold"),
+                                       bg="#0055FF", fg="white", command=self.consultar_dados_curso)
+        self.btn_consultar.grid(row=0, column=3, columnspan=2, pady=10, sticky="nsew")
+
+        # Footer
+        tk.Label(self.footer_frame, text=" Aluv  System - ₢ Todos direitos reservados - (38) 9 9871-8375",
+                 bg="#002CA7", fg="white", font=("Arial", 10)).pack(pady=10)
+        
+        
+        
+    def cadastrar_cursos(self):
+        self.limpar_center()
+        self.sub3principal_frame = tk.Frame(self.sub2principal_frame, bg="#f3f3f3")
+        self.sub3principal_frame.pack(fill="both", expand=True, padx=20, pady=10)
+
+        # Configurar grid para centralizar
+        self.sub3principal_frame.grid_columnconfigure(0, weight=1)  # coluna dos labels
+        self.sub3principal_frame.grid_columnconfigure(1, weight=2)  # coluna dos entry
+        self.sub3principal_frame.grid_columnconfigure(2, weight=1)  # espaço extra
+
+        # Labels e Entradas
+        tk.Label(self.sub3principal_frame, text="Curso", bg="#f3f3f3", font=("Arial", 12, "bold"))\
+            .grid(row=0, column=0, sticky="e", pady=5)
+        self.entry_curso = tk.Entry(self.sub3principal_frame, font=("Arial", 12), justify="center")
+        self.entry_curso.grid(row=0, column=1, pady=5, sticky="ew")
+
+        tk.Label(self.sub3principal_frame, text="Código da Turma", bg="#f3f3f3", font=("Arial", 12, "bold"))\
+            .grid(row=1, column=0, sticky="e", pady=5)
+        self.entry_codigot = tk.Entry(self.sub3principal_frame, font=("Arial", 12), justify="center")
+        self.entry_codigot.grid(row=1, column=1, pady=5, sticky="ew")
+
+        tk.Label(self.sub3principal_frame, text="Turno", bg="#f3f3f3", font=("Arial", 12, "bold"))\
+            .grid(row=2, column=0, sticky="e", pady=5)
+        self.combo_turno = ttk.Combobox(self.sub3principal_frame, values=["Manhã", "Tarde", "Noite"],
+                                        font=("Arial", 12), justify="center")
+        self.combo_turno.grid(row=2, column=1, pady=5, sticky="ew")
+
+        tk.Label(self.sub3principal_frame, text="Unidade", bg="#f3f3f3", font=("Arial", 12, "bold"))\
+            .grid(row=3, column=0, sticky="e", pady=5)
+        self.entry_unidade = tk.Entry(self.sub3principal_frame, font=("Arial", 12), justify="center")
+        self.entry_unidade.grid(row=3, column=1, pady=5, sticky="ew")
+
+        self.btn_cadastrar = tk.Button(self.sub3principal_frame, text="Cadastrar", font=("Arial", 12, "bold"),
+                                    bg="#002CA7", fg="white", command=self.salvar_cursos)
+        self.btn_cadastrar.grid(row=4, column=1, pady=10, sticky="nsew")
+
+        
+        
+    def salvar_cursos(self):
+        curso = self.entry_curso.get().strip()
+        codigo = self.entry_codigot.get().strip()
+        turno = self.combo_turno.get().strip()
+        unidade = self.entry_unidade.get().strip()
+
+        if not (curso and codigo and turno and unidade):
+            messagebox.showwarning("Atenção", "Preencha todos os campos!")
             return
 
-        self.label_mensagem.config(text=f"Exibindo chamada para: {turma_selecionada}", foreground="black")
+        try:
+            con = sqlite3.connect("instituicao.db")
+            cur = con.cursor()
+            cur.execute("INSERT INTO curso (Curso, Codigo_da_turma, Turno, Unidade) VALUES (?, ?, ?, ?)",
+                        (curso, codigo, turno, unidade))
+            con.commit()
+            con.close()
+            messagebox.showinfo("Sucesso", "Curso cadastrado com sucesso!")
+            self._limpar_campos()
+        except Exception as e:
+            messagebox.showerror("Erro", f"Falha ao salvar os dados:\n{e}")
 
-        # --- Simulação de busca de dados ---
-        # No mundo real, aqui você faria uma consulta ao banco de dados
-        # usando a 'turma_selecionada' como parâmetro.
-        dados_exemplo = self._gerar_dados_falsos()
+    def limpar_center(self):
+        for widget in self.sub2principal_frame.winfo_children():
+            widget.destroy()
 
-        # Adiciona tags para colorir as linhas
-        self.tree.tag_configure('presente', background='#dff0d8') # Verde claro
-        self.tree.tag_configure('ausente', background='#f2dede')  # Vermelho claro
 
-        # Insere os dados na tabela
-        for aluno in dados_exemplo:
-            # Define a tag com base na presença para colorir a linha
-            tag = 'presente' if aluno[2] == "Presente" else 'ausente'
-            self.tree.insert("", "end", values=aluno, tags=(tag,))
+    def consultar_dados_curso(self):
+        self.limpar_center()
+        consulta_win = (self.sub2principal_frame)
+        # consulta_win.title("Dados do Curso")
+        # consulta_win.geometry("800x400")
 
-    def _gerar_dados_falsos(self):
-        """
-        Gera uma lista de alunos para fins de demonstração.
-        Substitua isso pela sua lógica de banco de dados.
-        """
-        nomes = ["Ana Silva", "Bruno Costa", "Carla Dias", "Daniel Souza", "Eduarda Lima", "Felipe Alves", "Gabriela Melo", "Heitor Rocha", "Isabela Nunes", "João Pereira"]
-        dados = []
-        for i, nome in enumerate(random.sample(nomes, random.randint(5, 10))):
-            matricula = f"2024{random.randint(1000, 9999)}"
-            presenca = random.choice(["Presente", "Ausente"])
-            dados.append((matricula, nome, presenca))
-        return dados
+        colunas = ("ID", "Curso", "Código da turma", "Turno", "Unidade")
+        tree = ttk.Treeview(consulta_win, columns=colunas, show="headings")
+        for col in colunas:
+            tree.heading(col, text=col)
+            tree.column(col, width=150)
+        tree.pack(expand=True, fill="both", pady=10, padx=10)
+
+        con = sqlite3.connect("instituicao.db")
+        cursor = con.cursor()
+        cursor.execute("SELECT * FROM curso")
+        for row in cursor.fetchall():
+            tree.insert("", "end", values=row)
+        con.close()
+
+        def deletar_selecionado():
+            item = tree.selection()
+            if not item:
+                messagebox.showerror("Erro", "Selecione um curso para deletar!")
+                return
+            curso_id = tree.item(item)["values"][0]
+            con = sqlite3.connect("instituicao.db")
+            cursor = con.cursor()
+            cursor.execute("DELETE FROM curso WHERE ID=?", (curso_id,))
+            con.commit()
+            con.close()
+            tree.delete(item)
+            messagebox.showinfo("Sucesso", "Curso deletado com sucesso!")
+
+        tk.Button(consulta_win, text="Deletar Selecionado", bg="#FF0000", fg="white",
+                  font=("Arial", 12, "bold"), command=deletar_selecionado).pack(pady=10)
+
+    def _limpar_campos(self):
+        self.entry_curso.delete(0, tk.END)
+        self.entry_codigot.delete(0, tk.END)
+        self.combo_turno.set("")
+        self.entry_unidade.delete(0, tk.END)
+
 
 if __name__ == "__main__":
     root = tk.Tk()
-    app = TelaConsultaChamada(root)
+    app = TelaCadastroCurso(root)
     root.mainloop()
+
+
+
+#===============================================================================
+    
+#     def criar_banco(self):
+#         conn=sqlite3.connect("instituicao.db")
+#         cursor=conn.cursor()
+#         cursor.execute("""
+#             CREATE TABLE IF NOT EXISTS alunos(
+#                 ID INTEGER PRIMARY KEY AUTOINCREMENT,
+#                 Nome TEXT NOT NULL,
+#                 Matricula TEXT NOT NULL UNIQUE,
+#                 CPF TEXT NOT NULL UNIQUE CHECK(length(cpf)=11 AND CPF GLOB '[0-9]*'),
+#                 Email TEXT NOT NULL CHECK((instr(email, '@'))>1),
+#                 Curso TEXT
+#         )
+#     """)
+#         conn.commit()
+#         conn.close()
+
+#     def informacoes_alunos(self):
+#         # --- Configuração do Grid Interno para Centralização ---
+#         # Colunas 0 e 3 são espaçadores invisíveis que empurram o conteúdo para o centro.
+#         self.grid_columnconfigure(0, weight=1)
+#         self.grid_columnconfigure(1, weight=0) # Coluna dos labels
+#         self.grid_columnconfigure(2, weight=1) # Coluna dos entries (com peso para expandir)
+#         self.grid_columnconfigure(3, weight=1)
+
+#         # --- Título ---
+#         titulo = ttk.Label(self, text="CADASTRAR ALUNOS", style="Title.TLabel")
+#         titulo.grid(row=0, column=1, columnspan=2, pady=(20, 30))
+
+#         label_nome=ttk.Label(self, text="Nome", style='TLabel')
+#         label_nome.grid(row=1, column=1,sticky='w' )
+#         self.entry_nome=ttk.Entry(self, width= 100, style='TEntry')
+#         self.entry_nome.grid(row=1, column=2, sticky='w')
+
+#         label_matricula=ttk.Label(self, text="Matricula", style='TLabel')
+#         label_matricula.grid(row=2, column=1,sticky='w' )
+#         self.entry_matricula=ttk.Entry(self, width= 100, style='TEntry')
+#         self.entry_matricula.grid(row=2, column=2, sticky='w')
+
+#         label_cpf=ttk.Label(self, text="CPF", style='TLabel')
+#         label_cpf.grid(row=3, column=1,sticky='w' )
+#         self.entry_cpf=ttk.Entry(self, width= 100, style='TEntry')
+#         self.entry_cpf.grid(row=3, column=2, sticky='w')
+
+#         label_email=ttk.Label(self, text="Email", style='TLabel')
+#         label_email.grid(row=4, column=1,sticky='w' )
+#         self.entry_email=ttk.Entry(self, width= 100, style='TEntry')
+#         self.entry_email.grid(row=4, column=2, sticky='w')
+
+#         label_curso=ttk.Label(self, text="Curso", style='TLabel')
+#         label_curso.grid(row=5, column=1,sticky='w' )
+#         self.combo_curso=ttk.Combobox(self,values=[' '], font=("Arial", 12))
+#         self.combo_curso.grid(row=5, column=2, sticky='w')
+
+#         #========Botões==========
+
+#         botao_cadastrar = ttk.Button(self, text="Cadastrar", command=self.cadastrar_alunos)
+#         botao_cadastrar.grid(row=8, column=1, columnspan=2, pady=(30, 10), sticky="ew")
+
+#         botao_consultar = ttk.Button(self, text="Consultar registros", command=self.consultar_dados_alunos)
+#         botao_consultar.grid(row=9, column=1, columnspan=2, pady=(10, 20), sticky="ew")
+
+#     def cadastrar_alunos(self):
+#         try:
+#             con= sqlite3.connect("instituicao.db")
+#             cur=con.cursor()
+#             cur.execute("""
+#                 INSERT INTO alunos
+#                 (Nome, Matricula, CPF, Email, Curso)
+#                 VALUES(?, ?, ?, ?, ?)
+#             """,(
+#                 self.entry_nome.get(),
+#                 self.entry_matricula.get(),
+#                 self.entry_cpf.get(),
+#                 self.entry_email.get(),
+#                 self.combo_curso.get()
+            
+#             ))
+#             con.commit()
+#             con.close()
+
+#             messagebox.showinfo("Ok", "Aluno cadastrado com sucesso")
+#             self._limpar_campos()
+        
+#         except Exception as e:
+#             messagebox.showerror("Erro", f"Erro ao salvar dados{e}")
+
+#     def consultar_dados_alunos(self):
+#         area_consulta = tk.Toplevel(self.container)
+#         area_consulta.title("Dados dos alunos")
+#         area_consulta.geometry("900x400")
+
+#         colunas = ("ID", "Nome", "Matrícula", "CPF", "Email", "Curso")
+#         tree = ttk.Treeview(area_consulta, columns=colunas, show="headings")
+
+#         for col in colunas:
+#             tree.heading(col, text=col.capitalize())
+#             tree.column(col, width=100)
+
+#         tree.pack(expand=True, fill="both")
+
+#         con = sqlite3.connect("instituicao.db")
+#         cursor = con.cursor()
+#         cursor.execute("SELECT * FROM alunos")
+#         for row in cursor.fetchall():
+#             tree.insert("", "end", values=row)
+#         con.close()
+
+#         def deletar_selecionado():
+#                 item = tree.selection()
+#                 if not item:
+#                     messagebox.showerror("Erro", "Selecione um aluno para deletar!")
+#                     return
+
+#                 aluno_id = tree.item(item)["values"][0]
+
+#                 con = sqlite3.connect("instituicao.db")
+#                 cursor = con.cursor()
+#                 cursor.execute("DELETE FROM alunos WHERE id=?", (aluno_id,))
+#                 con.commit()
+#                 con.close()
+
+#                 tree.delete(item)
+#                 messagebox.showinfo("Sucesso", "Aluno deletado com sucesso!")
+#         #============botão para deletar um registro=============
+#         botao_deletar = ttk.Button(area_consulta, text="Deletar Selecionado", command=deletar_selecionado)
+#         botao_deletar.pack(pady=10)
+
+#     def _limpar_campos(self): #apos salvar os dados limpar os campos
+#         self.entry_nome.delete(0, tk.END)
+#         self.entry_matricula.delete(0, tk.END)
+#         self.entry_cpf.delete(0, tk.END)
+#         self.entry_email.delete(0, tk.END)
+#         self.combo_curso.set(" ")
+
+
+
+
+# if __name__ == "__main__":
+#     root = tk.Tk()
+#     app = TelaCadastroAluno(root)
+#     root.mainloop()
